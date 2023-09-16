@@ -1,9 +1,8 @@
 import { Address, Enrollment } from '@prisma/client';
 import { request } from '@/utils/request';
-import { CepinvalidFormatorNotExist, notFoundError } from '@/errors';
+import { CepinvalidFormatorNotExist, adressNotContained, notFoundError } from '@/errors';
 import { addressRepository, CreateAddressParams, enrollmentRepository, CreateEnrollmentParams } from '@/repositories';
 import { exclude } from '@/utils/prisma-utils';
-import { ParsedUrlQuery } from 'querystring';
 
 type ViaCep = {
   cep: string,
@@ -36,7 +35,7 @@ async function getAddressFromCEP(cep: string) {
 async function getOneWithAddressByUserId(userId: number): Promise<GetOneWithAddressByUserIdResult> {
   const enrollmentWithAddress = await enrollmentRepository.findWithAddressByUserId(userId);
 
-  if (!enrollmentWithAddress) throw notFoundError();
+  if (!enrollmentWithAddress) throw adressNotContained;
 
   const [firstAddress] = enrollmentWithAddress.Address;
   const address = getFirstAddress(firstAddress);
@@ -62,7 +61,9 @@ async function createOrUpdateEnrollmentWithAddress(params: CreateOrUpdateEnrollm
   enrollment.birthday = new Date(enrollment.birthday);
   const address = getAddressForUpsert(params.address);
 
-  // TODO - Verificar se o CEP é válido antes de associar ao enrollment.
+  const response = await request.get(`${process.env.VIA_CEP_API}/${address.cep}/json/`);
+  const result: ViaCep = response.data;
+  if (!result || result.erro === true) { throw CepinvalidFormatorNotExist }
 
   const newEnrollment = await enrollmentRepository.upsert(params.userId, enrollment, exclude(enrollment, 'userId'));
 

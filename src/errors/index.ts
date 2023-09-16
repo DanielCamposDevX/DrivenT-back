@@ -8,3 +8,4 @@ export * from './request-error';
 export * from './invalid-credentials-error';
 export * from './duplicate-email-error';
 export * from './invalid-format-or-not-exist'
+export * from './adress-not-contained'
