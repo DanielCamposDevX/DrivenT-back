@@ -3,6 +3,7 @@ import httpStatus from 'http-status';
 import { AuthenticatedRequest } from '@/middlewares';
 import { enrollmentsService } from '@/services';
 import { ParsedUrlQuery } from 'querystring';
+import { CepinvalidFormatorNotExist } from '@/errors';
 
 export async function getEnrollmentByUser(req: AuthenticatedRequest, res: Response) {
   const { userId } = req;

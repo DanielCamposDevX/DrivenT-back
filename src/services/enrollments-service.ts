@@ -5,23 +5,23 @@ import { addressRepository, CreateAddressParams, enrollmentRepository, CreateEnr
 import { exclude } from '@/utils/prisma-utils';
 
 type ViaCep = {
-  cep: string,
+  cep?: string,
   logradouro: string,
   complemento: string,
   bairro: string,
-  localidade: string,
+  localidade?: string,
   uf: string,
-  ibge: string,
-  gia: string,
-  ddd: string,
-  siafi: string,
+  ibge?: string,
+  gia?: string,
+  ddd?: string,
+  siafi?: string,
   erro?: boolean
 }
 
-async function getAddressFromCEP(cep: string) {
+async function getAddressFromCEP(cep: string): Promise<ViaCep> {
   const response = await request.get(`${process.env.VIA_CEP_API}/${cep}/json/`);
   const result: ViaCep = response.data;
-  if (!result || result.erro === true) { throw CepinvalidFormatorNotExist }
+  if (!result || result.erro === true) { throw CepinvalidFormatorNotExist() }
   const adress = {
     logradouro: result.logradouro,
     complemento: result.complemento,
@@ -35,7 +35,7 @@ async function getAddressFromCEP(cep: string) {
 async function getOneWithAddressByUserId(userId: number): Promise<GetOneWithAddressByUserIdResult> {
   const enrollmentWithAddress = await enrollmentRepository.findWithAddressByUserId(userId);
 
-  if (!enrollmentWithAddress) throw adressNotContained;
+  if (!enrollmentWithAddress) throw adressNotContained();
 
   const [firstAddress] = enrollmentWithAddress.Address;
   const address = getFirstAddress(firstAddress);
@@ -60,10 +60,10 @@ async function createOrUpdateEnrollmentWithAddress(params: CreateOrUpdateEnrollm
   const enrollment = exclude(params, 'address');
   enrollment.birthday = new Date(enrollment.birthday);
   const address = getAddressForUpsert(params.address);
+  if (!address || !address.cep) { { throw CepinvalidFormatorNotExist() } };
 
-  const response = await request.get(`${process.env.VIA_CEP_API}/${address.cep}/json/`);
-  const result: ViaCep = response.data;
-  if (!result || result.erro === true) { throw CepinvalidFormatorNotExist }
+  const result = await getAddressFromCEP(address.cep)
+  if (!result || !result.uf) { throw CepinvalidFormatorNotExist() };
 
   const newEnrollment = await enrollmentRepository.upsert(params.userId, enrollment, exclude(enrollment, 'userId'));
 
